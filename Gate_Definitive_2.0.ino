@@ -15,16 +15,24 @@ int pnReleControl = 2;
 
 int lastEndLineClose = 0;
 int lastEndLineOpen = 0;
-//Variavel que guarda o tempo para acionamento do controle dentro do void "open" "close"
-unsigned long myTime;
+
 unsigned long atualTime;
+void infra() {
+  while (digitalRead(pnInfra) == 0) {
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(100);
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(100);
+    Serial.println("---INFRA---");
+  }
+}
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
 
-  for (int key = 0; key < 4; key++) {
-    digitalWrite(LED_BUILTIN, HIGH);
-    delay(500);
+  for (int key = 0; key < 5; key++) {
     digitalWrite(LED_BUILTIN, LOW);
+    delay(500);
+    digitalWrite(LED_BUILTIN, HIGH);
     delay(500);
   };
 
@@ -52,103 +60,64 @@ void setup() {
 
   lastEndLineOpen = digitalRead(pnEndLineOpen);
   lastEndLineClose = digitalRead(pnEndLineClose);
+  infra();
   close();
 }
 
 void loop() {
 
-  while (digitalRead(pnInfra) == 0) {
-    digitalWrite(LED_BUILTIN, HIGH);
-    delay(100);
-    digitalWrite(LED_BUILTIN, LOW);
-    delay(100);
-  }
+  infra();
   if (digitalRead(pnReleControl) == 0) {
     controle();
-    //botao de abrir
-    if (digitalRead(pnButtonOpen) == 0) {
-      open();
-      //botao de fechar
-    } else if (digitalRead(pnButtonClose) == 0) {
-      close();
-    }
   }
+}
 
 
-  void open() {
-    digitalWrite(LED_BUILTIN, HIGH);
-    atualTime = millis();
-    while (lastEndLineOpen == 0 & digitalRead(pnInfra) == 1) {
-      myTime = millis();
-      //Ativando rele
-      digitalWrite(pnReleGateOpen, LOW);
-
-      if (digitalRead(pnReleControl) == 0 & (myTime - atualTime) > 2000) {
-
-        //Atualizando sensor para o loop
-        lastEndLineOpen = 1;
-        //Atualizando posicao do outro sensor
-        lastEndLineClose = digitalRead(pnEndLineClose);
-        break;
-      }
-
-      //Atualizando sensor para o loop
-      lastEndLineOpen = digitalRead(pnEndLineOpen);
-      //Atualizando posicao do outro sensor
-      lastEndLineClose = digitalRead(pnEndLineClose);
-    }
-
-    if (digitalRead(pnInfra) == 0) {
-      //Atualizando sensor para o loop
-      lastEndLineOpen = 1;
-      //Atualizando posicao do outro sensor
-      lastEndLineClose = digitalRead(pnEndLineClose);
-    }
-    //Desativando rele
-    digitalWrite(pnReleGateOpen, HIGH);
-    digitalWrite(LED_BUILTIN, LOW);
-    delay(2000);
+void open() {
+  digitalWrite(LED_BUILTIN, HIGH);
+  atualTime = millis();
+  
+  lastEndLineOpen = digitalRead(pnEndLineOpen);
+  while (lastEndLineOpen == 0 & digitalRead(pnInfra) == 1) {
+    lastEndLineOpen = digitalRead(pnEndLineOpen);
+    digitalWrite(pnReleGateOpen, LOW);
+    if (digitalRead(pnReleControl) == 0 & (millis() - atualTime) > 2500) break;
   }
+  lastEndLineOpen = 1;
+  lastEndLineClose = 0;
+  
+  Serial.println("Aberto");
+  digitalWrite(pnReleGateOpen, HIGH);
+  digitalWrite(LED_BUILTIN, LOW);
+  delay(2000);
+}
 
-  void close() {
-    digitalWrite(LED_BUILTIN, HIGH);
-    atualTime = millis();
-    while (lastEndLineClose == 0 & digitalRead(pnInfra) == 1) {
-      myTime = millis();
-      //Ativando rele
-      digitalWrite(pnReleGateClose, LOW);
-
-      if (digitalRead(pnReleControl) == 0 & (myTime - atualTime) > 2000) {
-
-        //Atualizando sensor para o loop
-        lastEndLineClose = 1;
-        //Atualizando posicao do outro sensor
-        lastEndLineOpen = digitalRead(pnEndLineOpen);
-
-        break;
-      }
-
-      //Atualizando sensor para o loop
-      lastEndLineClose = digitalRead(pnEndLineClose);
-      //Atualizando posicao do outro sensor
-      lastEndLineOpen = digitalRead(pnEndLineOpen);
-    }
-
-    if (digitalRead(pnInfra) == 0) {
-      lastEndLineClose = 1;
-      lastEndLineOpen = digitalRead(pnEndLineOpen);
-    }
-    //Desativando rele
-    digitalWrite(pnReleGateClose, HIGH);
-    digitalWrite(LED_BUILTIN, LOW);
-    delay(2000);
+void close() {
+  digitalWrite(LED_BUILTIN, HIGH);
+  atualTime = millis();
+  
+  lastEndLineClose = digitalRead(pnEndLineClose);
+  while (lastEndLineClose == 0 & digitalRead(pnInfra) == 1) {
+    lastEndLineClose = digitalRead(pnEndLineClose);
+    digitalWrite(pnReleGateClose, LOW);
+    if (digitalRead(pnReleControl) == 0 & (millis() - atualTime) > 2500) break;
   }
+  
+  lastEndLineClose = 1;
+  lastEndLineOpen = 0;
 
-  void controle() {
+  digitalWrite(pnReleGateClose, HIGH);
+  digitalWrite(LED_BUILTIN, LOW);
+  delay(2000);
+}
 
-    if (lastEndLineOpen == 0) {
-      open();
-    } else if (lastEndLineClose == 0) {
-      close();
-    }
+void controle() {
+  if (lastEndLineOpen == 0 && lastEndLineClose == 1) {
+    open();
+  } else if (lastEndLineClose == 0 && lastEndLineOpen == 1) {
+    close();
+  } else if (lastEndLineClose == 1 && lastEndLineOpen == 1) {
+    lastEndLineClose = digitalRead(pnEndLineClose);
+    lastEndLineOpen = digitalRead(pnEndLineOpen);
   }
+}
